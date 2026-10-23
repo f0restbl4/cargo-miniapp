@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Карго</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#f3f4f8;--card:#fff;--ink:#111827;--muted:#8a93a3;--line:#e5e8ef;--accent:#ff8a1f;--blue:#2aabee}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;background:var(--bg);color:var(--ink);padding:14px 14px 100px;font-size:15px}
+.ccard{border-radius:20px;padding:18px 20px;background:linear-gradient(135deg,#ff9b3d,#ff6a00);color:#fff;box-shadow:0 10px 24px rgba(255,106,0,.25)}
+.ccard small{font-size:13px;opacity:.85;display:block}
+.ccard b{font-size:34px;letter-spacing:1px;display:block;margin:2px 0;font-weight:800}
+.ccard span{font-size:14px}
+.ccard button{float:right;border:0;background:rgba(255,255,255,.22);color:#fff;border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600}
+.tabs{display:flex;background:#e5e8ef;border-radius:13px;padding:4px;margin:14px 0}
+.tabs button{flex:1;border:0;background:none;padding:10px 0;border-radius:10px;font-size:14px;font-weight:600;color:#5b6475}
+.tabs button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.pane{display:none}.pane.on{display:block}
+.pcard{background:var(--card);border-radius:18px;padding:14px 16px 12px;margin-bottom:10px;box-shadow:0 2px 10px rgba(20,30,60,.06)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:700;word-break:break-all}
+.w{font-size:12px;color:var(--muted);margin-top:3px}
+.pill{font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;white-space:nowrap}
+.s-ready{background:#e2f6e9;color:#138a3e}.s-transit{background:#e6f0ff;color:#2a6fdb}.s-china{background:#fff1e4;color:#d9690b}
+.s-arrived{background:#efe8ff;color:#6b3fd6}.s-delivered,.s-none{background:#eef0f4;color:#6b7280}
+.trk{height:6px;background:#e7e9ef;border-radius:6px;margin:14px 2px 8px;overflow:hidden}
+.trk i{display:block;height:100%;border-radius:6px;width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.steps{display:flex;justify-content:space-between;font-size:11px;color:#9aa2b1}
+.steps .on{color:var(--ink);font-weight:700}
+.empty{text-align:center;color:var(--muted);padding:40px 20px;line-height:1.5}
+.box{background:var(--card);border-radius:18px;padding:16px;margin-bottom:10px}
+.addr{font-family:ui-monospace,Menlo,monospace;font-size:14px;line-height:1.5;word-break:break-word}
+.warn{font-size:13px;color:#b45309;background:#fff7ed;border-radius:12px;padding:10px 12px;margin-top:10px}
+.seg{display:flex;gap:8px;margin-bottom:16px}
+.seg button{flex:1;border:2px solid var(--line);background:#fff;border-radius:12px;padding:11px 6px;font-size:14px;font-weight:600;color:var(--ink)}
+.seg button.on{border-color:var(--accent);color:#d9690b}
+.lbl{font-size:14px;color:#5b6475}
+.big{font-size:44px;font-weight:800;letter-spacing:-1px;margin:2px 0 6px}
+input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+.price{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:#5b6475}
+.price b{font-size:30px;color:var(--ink)}
+.note{font-size:12px;color:var(--muted);margin-top:6px}
+.main{position:fixed;left:14px;right:14px;bottom:16px;height:54px;border:0;border-radius:14px;background:var(--blue);color:#fff;font-size:16px;font-weight:700;box-shadow:0 6px 18px rgba(42,171,238,.35)}
+.toast{position:fixed;left:50%;bottom:84px;transform:translate(-50%,20px);background:rgba(17,24,39,.9);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="ccard"><button id="copyCode"></button><small id="tCode"></small><b id="code">—</b><span id="who"></span></div>
+<div class="tabs">
+  <button class="on" data-tab="parcels" id="tbP"></button>
+  <button data-tab="addr" id="tbA"></button>
+  <button data-tab="calc" id="tbC"></button>
+</div>
+<div class="pane on" id="parcels"></div>
+<div class="pane" id="addr">
+  <div class="box"><div class="lbl" id="tAddr"></div><div class="addr" id="addrText" style="margin-top:8px"></div>
+  <div class="warn" id="tWarn"></div></div>
+  <div class="box"><div class="lbl" id="tPick"></div><div style="margin-top:6px;font-weight:600" id="pick"></div></div>
+</div>
+<div class="pane" id="calc">
+  <div class="seg"><button class="on" data-mode="0" id="mA"></button><button data-mode="1" id="mB"></button></div>
+  <div class="box">
+    <div class="lbl" id="tWeight"></div>
+    <div class="big"><span id="wv">1.0</span> кг</div>
+    <input type="range" id="wr" min="0.1" max="30" step="0.1" value="1">
+    <div class="price" style="margin-top:12px"><span id="tPrice"></span><b id="pv"></b></div>
+    <div class="note" id="tNote"></div>
+  </div>
+</div>
+<button class="main" id="mainBtn"></button>
+<div class="toast" id="toast"></div>
+
+<script>
+const L = {
+  ru: {code:"Код клиента", copy:"Копировать", parcels:"Посылки", addr:"Склад", calc:"Калькулятор",
+       steps:["Китай","В пути","Таджикистан","Выдача"], empty:"Посылок пока нет.<br>Добавьте трек-номер в боте — он появится здесь.",
+       st:{china:"Склад в Китае",transit:"В пути",arrived:"Прибыла",ready:"Готова к выдаче",delivered:"Выдана",none:"Ожидаем"},
+       wUnknown:"вес уточняется", addrT:"Адрес склада в Китае", warn:"⚠️ Обязательно указывайте код {code}, иначе посылку не найдут.",
+       pick:"Пункт выдачи", avia:"✈️ Авиа", auto:"🚚 Авто", days:"дн", weight:"Вес посылки", price:"Стоимость",
+       note:"Тариф {r} {c}/кг · минимум {m} {c}", copyAddr:"📋 Скопировать адрес склада", copied:"Скопировано ✓", contact:"✉️ Написать менеджеру"},
+  tg: {code:"Рамзи мизоҷ", copy:"Нусха", parcels:"Бастаҳо", addr:"Анбор", calc:"Ҳисобкунак",
+       steps:["Чин","Дар роҳ","Тоҷикистон","Супоридан"], empty:"Ҳоло баста нест.<br>Трек-рақамро дар бот илова кунед — дар ин ҷо пайдо мешавад.",
+       st:{china:"Анбори Чин",transit:"Дар роҳ",arrived:"Расид",ready:"Тайёр",delivered:"Супорида шуд",none:"Интизорем"},
+       wUnknown:"вазн муайян мешавад", addrT:"Суроғаи анбор дар Чин", warn:"⚠️ Рамзи {code}-ро ҳатман нависед, вагарна бастаро наёбанд.",
+       pick:"Ҷои супоридан", avia:"✈️ Ҳавоӣ", auto:"🚚 Мошин", days:"рӯз", weight:"Вазни баста", price:"Нарх",
+       note:"Тариф {r} {c}/кг · ҳадди ақал {m} {c}", copyAddr:"📋 Нусхаи суроғаи анбор", copied:"Нусха гирифта шуд ✓", contact:"✉️ Ба менеҷер нависед"}
+};
+const STEP = {none:0, china:1, transit:2, arrived:3, ready:4, delivered:4};
+const COLOR = {china:"#ff8a1f", transit:"#2aabee", arrived:"#8b5cf6", ready:"#22b25a", delivered:"#9ca3af", none:"#d1d5db"};
+
+function decode() {
+  try {
+    const raw = new URLSearchParams(location.search).get("d");
+    const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64 + "===".slice((b64.length + 3) % 4));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+  } catch (e) { return null; }
+}
+const tgapp = window.Telegram && Telegram.WebApp;
+if (tgapp) { tgapp.ready(); tgapp.expand(); try { tgapp.setHeaderColor("#ffffff"); tgapp.setBackgroundColor("#f3f4f8"); } catch (e) {} }
+
+// демо-данные, если страницу открыли напрямую в браузере
+const D = decode() || {c:"VK-0127", n:"Фаррух", ci:"Душанбе", l:"ru", cur:"$", r:[6,3,10], dd:["7–10","20–25"],
+  a:"广州市白云区 88号 仓库 VK-0127 收件人: VK-0127", pk:"Душанбе, ул. Примерная 1, 10:00–19:00",
+  p:[["YT0715700684012","ready",2.4],["SF1567007204809","transit",1.2],["YT0713342120949","china",null]]};
+const T = L[D.l] || L.ru;
+const $ = id => document.getElementById(id);
+const fmt = (s, o) => s.replace(/\{(\w)\}/g, (_, k) => o[k]).replace("{code}", D.c);
+
+$("tCode").textContent = T.code; $("code").textContent = D.c; $("who").textContent = [D.n, D.ci].filter(Boolean).join(" · ");
+$("copyCode").textContent = T.copy;
+$("tbP").textContent = `${T.parcels} · ${D.p.length}`; $("tbA").textContent = T.addr; $("tbC").textContent = T.calc;
+$("tAddr").textContent = T.addrT; $("addrText").textContent = D.a; $("tWarn").textContent = T.warn.replace("{code}", D.c);
+$("tPick").textContent = T.pick; $("pick").textContent = D.pk;
+$("mA").textContent = `${T.avia} · ${D.dd[0]} ${T.days}`; $("mB").textContent = `${T.auto} · ${D.dd[1]} ${T.days}`;
+$("tWeight").textContent = T.weight; $("tPrice").textContent = T.price;
+
+// посылки
+const box = $("parcels");
+if (!D.p.length) box.innerHTML = `<div class="empty">${T.empty}</div>`;
+D.p.forEach(([track, st, w]) => {
+  st = st || "none";
+  const n = STEP[st] ?? 0;
+  const el = document.createElement("div");
+  el.className = "pcard";
+  el.innerHTML = `<div class="top"><div><code></code><div class="w">${w ? w + " кг" : T.wUnknown}</div></div>
+    <span class="pill s-${st}">${T.st[st]}</span></div>
+    <div class="trk"><i style="background:${COLOR[st]}"></i></div>
+    <div class="steps">${T.steps.map((s, i) => `<span class="${i < n ? "on" : ""}">${s}</span>`).join("")}</div>`;
+  el.querySelector("code").textContent = track;
+  box.appendChild(el);
+  const pct = st === "transit" ? 46 : st === "china" ? 8 : [0, 8, 46, 75, 100][n];
+  requestAnimationFrame(() => setTimeout(() => el.querySelector(".trk i").style.width = pct + "%", 80));
+});
+
+// вкладки
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button,.pane").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); $(b.dataset.tab).classList.add("on");
+  tgapp && tgapp.HapticFeedback && tgapp.HapticFeedback.selectionChanged();
+});
+
+// калькулятор
+let mode = 0;
+function calc() {
+  const w = +$("wr").value, rate = D.r[mode];
+  $("wv").textContent = w.toFixed(1);
+  const p = Math.max(w * rate, D.r[2]);
+  $("pv").textContent = `${(Math.round(p * 10) / 10).toString()} ${D.cur}`;
+  $("tNote").textContent = fmt(T.note, {r: rate, c: D.cur, m: D.r[2]});
+}
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".seg button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); mode = +b.dataset.mode; calc();
+});
+$("wr").oninput = calc; calc();
+
+// копирование
+function toast(t) { const e = $("toast"); e.textContent = t; e.classList.add("on"); setTimeout(() => e.classList.remove("on"), 1500); }
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  tgapp && tgapp.HapticFeedback && tgapp.HapticFeedback.notificationOccurred("success");
+  toast(T.copied);
+}
+$("copyCode").onclick = () => copy(D.c);
+$("mainBtn").textContent = T.copyAddr;
+$("mainBtn").onclick = () => copy(D.a);
+</script>
+</body>
+</html>
